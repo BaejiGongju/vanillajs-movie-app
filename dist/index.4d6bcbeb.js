@@ -767,24 +767,32 @@ const store = new (0, _heropy.Store)({
     page: 1,
     pageMax: 1,
     movies: [],
-    loading: false
+    loading: false,
+    message: "Search for the movie title!"
 });
 exports.default = store;
 const searchMovies = async (page)=>{
     store.state.loading = true;
     store.state.page = page;
     if (page === 1) {
-        store.state.page = 1;
         store.state.movies = [];
+        store.state.message = "";
     }
-    const res = await fetch(`https://omdbapi.com?apikey=7035c60c&s=${store.state.searchText}&page=${page}`);
-    const { Search , totalResults  } = await res.json();
-    store.state.movies = [
-        ...store.state.movies,
-        ...Search
-    ];
-    store.state.pageMax = Math.ceil(Number(totalResults) / 10);
-    store.state.loading = false;
+    try {
+        const res = await fetch(`https://omdbapi.com?apikey=7035c60c&s=${store.state.searchText}&page=${page}`);
+        const { Search , totalResults , Response , Error  } = await res.json();
+        if (Response === "True") {
+            store.state.movies = [
+                ...store.state.movies,
+                ...Search
+            ];
+            store.state.pageMax = Math.ceil(Number(totalResults) / 10);
+        } else store.state.message = Error;
+    } catch (error) {
+        console.log("searchMovies error:", error);
+    } finally{
+        store.state.loading = false;
+    }
 };
 
 },{"../core/heropy":"57bZf","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"8UDl3":[function(require,module,exports) {
@@ -804,15 +812,18 @@ class MovieList extends (0, _heropy.Component) {
         (0, _movieDefault.default).subscribe("loading", ()=>{
             this.render();
         });
+        (0, _movieDefault.default).subscribe("message", ()=>{
+            this.render();
+        });
     }
     render() {
         this.el.classList.add("movie-list");
         this.el.innerHTML = /* html */ `
-      <div class="movies"></div>
+      ${(0, _movieDefault.default).state.message ? `<div class="message">${(0, _movieDefault.default).state.message}</div>` : '<div class="movies"></div>'}
       <div class="the-loader hide"></div>
     `;
         const moviesEl = this.el.querySelector(".movies");
-        moviesEl.append(...(0, _movieDefault.default).state.movies.map((movie)=>new (0, _movieItemDefault.default)({
+        moviesEl?.append(...(0, _movieDefault.default).state.movies.map((movie)=>new (0, _movieItemDefault.default)({
                 movie
             }).el));
         const loaderEl = this.el.querySelector(".the-loader");
